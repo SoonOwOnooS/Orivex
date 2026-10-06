@@ -11,7 +11,12 @@ export default defineConfig(async () => {
   process.env.MINIFLARE_REGISTRY_PATH ??= '.wrangler/registry';
   const { cloudflare } = await import('@cloudflare/vite-plugin');
   return {
-    server: { host: '127.0.0.1', strictPort: true },
+    server: {
+      host: '127.0.0.1',
+      strictPort: true,
+      // Ignore editor caches so Windows file locks do not stop the dev server.
+      watch: { ignored: ['**/.vs/**'] },
+    },
     // Build the React app, add hosting metadata, then build the Cloudflare Worker.
     plugins: [
       vinext(),

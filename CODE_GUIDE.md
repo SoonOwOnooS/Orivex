@@ -90,7 +90,7 @@ Each account can make up to 120 archive writes in the last 24 hours. This includ
 
 `0003_creator_archives.sql` creates the archive tables and copies old game registration sources into them. Apply this migration before deploying the archive code.
 
-Cloudflare dashboard login settings are kept during deployment with `keep_vars`. Local login settings belong in `.dev.vars`; see `.dev.vars.example`.
+Production `AUTH_ORIGIN` and the public GitHub client ID are stored in `wrangler.jsonc`. The client secret stays in Cloudflare secrets. `keep_vars` keeps other dashboard variables, but cannot restore missing or incorrect values. Local login settings override the production defaults in `.dev.vars`; see `.dev.vars.example`.
 
 ## Compare videos
 

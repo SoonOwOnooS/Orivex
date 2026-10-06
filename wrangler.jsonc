@@ -12,7 +12,11 @@
       "migrations_dir": "./drizzle",
     },
   ],
-  // Keep login settings managed in the Cloudflare dashboard when deploying.
-  // Local login settings belong in .dev.vars. Never commit the client secret.
+  // Public production login settings. Override them in .dev.vars for local login.
+  // Keep AUTH_GITHUB_CLIENT_SECRET in Cloudflare secrets, never in this file.
+  "vars": {
+    "AUTH_GITHUB_CLIENT_ID": "Ov23liaf8vV4NiFXlnmu",
+    "AUTH_ORIGIN": "https://orivex.real-videogame.workers.dev",
+  },
   "keep_vars": true,
 }
