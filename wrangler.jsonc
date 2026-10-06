@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "orivex",
+  "main": "./build/sites-worker.ts",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "orivex-db",
+    // Replace with your own Cloudflare D1 id before deploying.
+    "database_id": "00000000-0000-4000-8000-000000000000",
+    "migrations_dir": "./drizzle"
+  }],
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "orivex-evidence" }],
+  // Public runtime settings only. Never put AUTH_GITHUB_CLIENT_SECRET here.
+  "vars": { "AUTH_ORIGIN": "http://127.0.0.1:5173", "AUTH_GITHUB_CLIENT_ID": "" }
+}

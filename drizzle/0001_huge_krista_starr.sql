@@ -1,0 +1,1 @@
+CREATE INDEX `history_user_time` ON `review_history` (`user_id`,`created_at`);

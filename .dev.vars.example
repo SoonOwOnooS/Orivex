@@ -1,0 +1,8 @@
+# Copy to .dev.vars and fill in your GitHub OAuth App credentials.
+# Keep AUTH_ORIGIN, the browser URL, and the OAuth callback host/port aligned.
+# Default npm run dev: http://127.0.0.1:5173
+# Default npm start: http://127.0.0.1:8787
+# GitHub OAuth callback: AUTH_ORIGIN/auth/callback
+AUTH_ORIGIN=http://127.0.0.1:5173
+AUTH_GITHUB_CLIENT_ID=
+AUTH_GITHUB_CLIENT_SECRET=

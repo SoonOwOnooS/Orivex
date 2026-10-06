@@ -134,3 +134,13 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Orivex runtime data and secrets
+.wrangler/
+.sites-runtime/
+.vinext/
+.dev.vars*
+.env*
+!.env.example
+!.dev.vars.example
+
