@@ -4,9 +4,9 @@ import { LanguageProvider } from '../lib/i18n';
 import { requestedLocale } from '../lib/locale-server';
 
 export const metadata: Metadata = {
-  title: 'Orivex · Game Evidence Registry',
+  title: 'Orivex · Game Creator Archives',
   description:
-    'Record game announcements and release dates, compare ideas and promotional videos, and review verifiable evidence together.',
+    'Discover game creators through their stories, public source timelines, fan works, and links to support their games.',
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',

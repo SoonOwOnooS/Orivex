@@ -1,6 +1,7 @@
 'use client';
 import { useI18n, LanguageSwitch } from '../lib/i18n';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
+import Link from 'next/link';
 import {
   Fingerprint,
   Plus,
@@ -15,6 +16,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import Compare from './compare';
+import Archive from './archive';
 import { readResponse } from '../lib/client';
 import Reviews from './reviews';
 import { registerTools } from '../lib/webmcp';
@@ -26,9 +28,27 @@ export type Game = {
   announced: string;
   source_url: string;
   description: string;
+  series: string;
+  earliest_public?: string | null;
 };
 export type User = { id: string; name: string; defaultName?: boolean } | null;
-// Main screen: game list, comparison tools, and community reviews.
+// Read the game ID from the URL so each archive can be shared.
+function selectedGame() {
+  return new URLSearchParams(location.search).get('game') || '';
+}
+function watchNavigation(onChange: () => void) {
+  window.addEventListener('popstate', onChange);
+  return () => window.removeEventListener('popstate', onChange);
+}
+function openGame(id: string) {
+  const url = new URL(location.href);
+  if (id) url.searchParams.set('game', id);
+  else url.searchParams.delete('game');
+  history.pushState(null, '', url);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  window.scrollTo({ top: 0 });
+}
+// Main screen: public archives, comparison tools, and community reviews.
 export default function Workspace({
   user,
   signIn,
@@ -38,9 +58,14 @@ export default function Workspace({
   signIn: string;
   signOut: string;
 }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   // React state is screen data. Updating it redraws the screen.
   const [tab, setTab] = useState('games');
+  const selectedId = useSyncExternalStore(watchNavigation, selectedGame, () => '');
+  const [sort, setSort] = useState('recent');
+  const loginLink = selectedId
+    ? '/auth/signin?return_to=' + encodeURIComponent('/?game=' + selectedId)
+    : signIn;
   const [games, setGames] = useState<Game[]>([]);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
@@ -61,7 +86,17 @@ export default function Workspace({
   }
   // Fetch the game list when this screen opens.
   useEffect(() => {
-    void refresh();
+    const controller = new AbortController();
+    fetch('/api/games', { signal: controller.signal })
+      .then((response) => readResponse<{ games: Game[] }>(response))
+      .then((data) => setGames(data.games))
+      .catch((error) => {
+        if (!controller.signal.aborted) setError(error.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
   }, []);
   // Optional browser tools can read games or open the form. They cannot save it.
   useEffect(
@@ -75,7 +110,7 @@ export default function Workspace({
           setModal(true);
         },
       ),
-    [games, user, locale],
+    [games, user, t],
   );
   // Save the form. Keep the inputs if the server rejects it.
   async function save(event: React.FormEvent<HTMLFormElement>) {
@@ -89,9 +124,10 @@ export default function Workspace({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      await readResponse<{ id: string }>(response);
+      const saved = await readResponse<{ id: string }>(response);
       setModal(false);
       await refresh();
+      openGame(saved.id);
     } catch (error) {
       setError(error instanceof Error ? error.message : t('保存失败，输入已保留'));
     } finally {
@@ -99,29 +135,37 @@ export default function Workspace({
     }
   }
   // Search only changes what is shown; it does not change stored games.
-  const visible = games.filter((game) =>
-    (game.title + game.developer).toLowerCase().includes(query.toLowerCase()),
-  );
+  const visible = games
+    .filter((game) => (game.title + game.developer).toLowerCase().includes(query.toLowerCase()))
+    .sort((a, b) =>
+      sort === 'public'
+        ? (a.earliest_public || '9999').localeCompare(b.earliest_public || '9999')
+        : games.indexOf(a) - games.indexOf(b),
+    );
+  function navigate(tabId: string) {
+    openGame('');
+    setTab(tabId);
+  }
   return (
     <div className="shell">
       <header className="topbar">
-        <a href="/" className="brand">
+        <Link href="/" className="brand">
           <span className="brandmark">
             <Fingerprint size={25} />
           </span>
           <span>
-            Orivex<small>GAME EVIDENCE</small>
+            Orivex<small>CREATOR ARCHIVES</small>
           </span>
-        </a>
+        </Link>
         <nav aria-label={t('主导航')}>
           {[
-            ['games', t('游戏时间线')],
+            ['games', t('游戏档案')],
             ['compare', t('对照工作台')],
             ['reviews', t('审核记录')],
           ].map(([tabId, label]) => (
             <button
               key={tabId}
-              onClick={() => setTab(tabId)}
+              onClick={() => navigate(tabId)}
               className={tab === tabId ? 'active' : ''}
             >
               {label}
@@ -147,7 +191,7 @@ export default function Workspace({
               </form>
             </>
           ) : (
-            <a className="button small" href={signIn} target="_top">
+            <a className="button small" href={loginLink} target="_top">
               {t('GitHub 登录')}
             </a>
           )}
@@ -156,15 +200,15 @@ export default function Workspace({
       <main>
         <section className="intro">
           <div>
-            <p className="eyebrow">{t('独立游戏 · 创作证据库')}</p>
-            <h1>{t('让创作有迹可循。')}</h1>
-            <p>{t('记录公开时间，核对相似之处，为每一份判断保留依据。')}</p>
+            <p className="eyebrow">{t('独立游戏 · 创作档案')}</p>
+            <h1>{t('看见游戏背后的创作者。')}</h1>
+            <p>{t('了解创作故事、公开时间与同人文化，找到值得支持的作品。')}</p>
           </div>
           <div className="intro-note">
             <ShieldCheck size={21} />
             <span>
-              {t('证据先于结论')}
-              <small>{t('AI 辅助对照，社区独立审核')}</small>
+              {t('从故事到支持')}
+              <small>{t('保留来源，认识创作者')}</small>
             </span>
           </div>
         </section>
@@ -203,13 +247,26 @@ export default function Workspace({
             </button>
           </div>
         )}
-        {tab === 'games' ? (
+        {selectedId ? (
+          <Archive
+            key={selectedId}
+            gameId={selectedId}
+            games={games}
+            user={user}
+            signIn={loginLink}
+            onBack={() => {
+              navigate('games');
+              void refresh();
+            }}
+            onOpenGame={openGame}
+          />
+        ) : tab === 'games' ? (
           <div className="workspace-grid">
             <section className="panel ledger">
               <div className="panel-head">
                 <div>
                   <p className="eyebrow">REGISTRY / 01</p>
-                  <h2>{t('游戏时间线')}</h2>
+                  <h2>{t('游戏档案')}</h2>
                 </div>
                 {user ? (
                   <button className="button" onClick={() => setModal(true)}>
@@ -217,7 +274,7 @@ export default function Workspace({
                     {t('登记游戏')}
                   </button>
                 ) : (
-                  <a className="button" href={signIn} target="_top">
+                  <a className="button" href={loginLink} target="_top">
                     <Plus size={16} />
                     {t('登录后登记')}
                   </a>
@@ -233,14 +290,21 @@ export default function Workspace({
                     placeholder={t('搜索游戏或开发者')}
                   />
                 </div>
-                <span>{t('按登记时间排序')}</span>
+                <select
+                  aria-label={t('排序方式')}
+                  value={sort}
+                  onChange={(event) => setSort(event.target.value)}
+                >
+                  <option value="recent">{t('最近登记')}</option>
+                  <option value="public">{t('较早公开的来源')}</option>
+                </select>
               </div>
               <div className="table-wrap">
                 <table>
                   <thead>
                     <tr>
                       <th>{t('游戏 / 开发者')}</th>
-                      <th>{t('首次宣传')}</th>
+                      <th>{t('较早公开的来源')}</th>
                       <th>{t('正式发布')}</th>
                       <th>{t('时间证据')}</th>
                     </tr>
@@ -249,8 +313,23 @@ export default function Workspace({
                     {visible.map((game) => (
                       <tr key={game.id}>
                         <td>
-                          <strong>{game.title}</strong>
-                          <small>{game.developer}</small>
+                          <button
+                            className="game-title text-button"
+                            onClick={() => openGame(game.id)}
+                          >
+                            {game.title}
+                          </button>
+                          <small>
+                            {game.developer}
+                            {game.series && ` · ${game.series}`}
+                          </small>
+                          <button
+                            className="text-button archive-open"
+                            onClick={() => openGame(game.id)}
+                          >
+                            {t('查看创作档案')}
+                            <ChevronRight size={13} />
+                          </button>
                           <details>
                             <summary>{t('创意描述')}</summary>
                             <p style={{ maxWidth: 280, whiteSpace: 'pre-wrap' }}>
@@ -258,7 +337,7 @@ export default function Workspace({
                             </p>
                           </details>
                         </td>
-                        <td>{game.announced || t('未提供')}</td>
+                        <td>{game.earliest_public || t('未提供')}</td>
                         <td>{game.published || t('未发布 / 未提供')}</td>
                         <td>
                           <a href={game.source_url} target="_blank" rel="noreferrer">
@@ -279,7 +358,9 @@ export default function Workspace({
                   </span>
                   <h3>{loading ? t('正在读取时间线') : t('第一条时间线，从这里开始')}</h3>
                   <p>
-                    {query ? t('没有匹配的游戏。') : t('登记作品的公开日期与来源，帮助后续对照。')}
+                    {query
+                      ? t('没有匹配的游戏。')
+                      : t('登记游戏，再补充它的故事、来源与支持链接。')}
                   </p>
                   <button
                     className="text-button"
@@ -297,13 +378,13 @@ export default function Workspace({
             </section>
             <aside className="sidebar">
               <section className="panel side-card">
-                <p className="eyebrow">REVIEW PROTOCOL</p>
-                <h2>{t('每一步，都能核对')}</h2>
+                <p className="eyebrow">DISCOVER THE CREATOR</p>
+                <h2>{t('认识一款游戏的来历')}</h2>
                 <ol className="steps">
                   {[
-                    [t('登记公开时间'), t('保留游戏页面、宣传链接与日期。')],
-                    [t('对照具体证据'), t('创意特征、宣传文案与视频画面。')],
-                    [t('独立参与审核'), t('说明判断理由，允许回应和更正。')],
+                    [t('创作故事'), t('了解灵感、开发过程与设计变化。')],
+                    [t('证据时间线'), t('从公开帖子、开发日志与首秀了解创作轨迹。')],
+                    [t('同人文化'), t('发现同人创作，保留作者与原始作品的联系。')],
                   ].map(([t, data], stepIndex) => (
                     <li key={t}>
                       <b>0{stepIndex + 1}</b>
@@ -329,7 +410,7 @@ export default function Workspace({
                     '同类型玩法、共同授权素材与独立创作，都可能产生相似内容。分数需要结合可核对的证据阅读。',
                   )}
                 </p>
-                <button className="text-button" onClick={() => setTab('method')}>
+                <button className="text-button" onClick={() => navigate('method')}>
                   {t('查看评估方法')}
                   <ChevronRight size={14} />
                 </button>
@@ -384,9 +465,9 @@ export default function Workspace({
         )}
       </main>
       <footer>
-        <span>{t('Orivex · 让独立创作者的证据被看见')}</span>
+        <span>{t('Orivex · 让游戏创作者被看见')}</span>
         <div>
-          <button onClick={() => setTab('method')}>{t('评估方法')}</button>
+          <button onClick={() => navigate('method')}>{t('评估方法')}</button>
           <a href="https://github.com/SoonOwOnooS/Orivex" target="_blank" rel="noreferrer">
             {t('MIT 开源')}
           </a>
@@ -427,6 +508,10 @@ export default function Workspace({
               <label>
                 {t('开发者 / 工作室')}
                 <input name="developer" required maxLength={100} />
+              </label>
+              <label>
+                {t('所属系列（可选）')}
+                <input name="series" maxLength={100} placeholder={t('同系列游戏使用相同名称')} />
               </label>
               <div className="form-grid">
                 <label>

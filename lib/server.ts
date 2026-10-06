@@ -109,7 +109,7 @@ export const date = z
   );
 // Count the last 24 hours. This is a per-account limit, not a global cost cap.
 export async function quota(
-  table: 'games' | 'comparisons' | 'reviews' | 'review_history' | 'responses',
+  table: 'games' | 'comparisons' | 'reviews' | 'review_history' | 'responses' | 'archive_activity',
   field: 'created_by' | 'author_id' | 'user_id',
   userId: string,
   limit: number,

@@ -12,6 +12,7 @@
       "migrations_dir": "./drizzle",
     },
   ],
-  // Public runtime settings only. Never put AUTH_GITHUB_CLIENT_SECRET here.
-  "vars": { "AUTH_ORIGIN": "http://127.0.0.1:5173", "AUTH_GITHUB_CLIENT_ID": "" },
+  // Keep login settings managed in the Cloudflare dashboard when deploying.
+  // Local login settings belong in .dev.vars. Never commit the client secret.
+  "keep_vars": true,
 }

@@ -10,6 +10,7 @@ export const games = sqliteTable(
     announced: text('announced').notNull().default(''),
     sourceUrl: text('source_url').notNull(),
     description: text('description').notNull(),
+    series: text('series').notNull().default(''),
     createdBy: text('created_by').notNull(),
     createdAt: text('created_at').notNull(),
   },
@@ -113,4 +114,92 @@ export const oauthStates = sqliteTable(
     expiresAt: integer('expires_at').notNull(),
   },
   (t) => [index('oauth_states_expiry').on(t.expiresAt)],
+);
+
+// Each item belongs to a game. Fan works can also link to other games.
+export const archiveItems = sqliteTable(
+  'archive_items',
+  {
+    id: text('id').primaryKey(),
+    gameId: text('game_id')
+      .notNull()
+      .references(() => games.id),
+    kind: text('kind').notNull(),
+    title: text('title').notNull(),
+    body: text('body').notNull().default(''),
+    url: text('url').notNull(),
+    credit: text('credit').notNull().default(''),
+    category: text('category').notNull().default(''),
+    occurredOn: text('occurred_on').notNull().default(''),
+    authorId: text('author_id').notNull(),
+    authorName: text('author_name').notNull(),
+    revision: integer('revision').notNull().default(1),
+    removed: integer('removed').notNull().default(0),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [index('archive_game_kind').on(table.gameId, table.kind, table.createdAt)],
+);
+
+export const archiveRelatedGames = sqliteTable(
+  'archive_related_games',
+  {
+    itemId: text('item_id')
+      .notNull()
+      .references(() => archiveItems.id),
+    gameId: text('game_id')
+      .notNull()
+      .references(() => games.id),
+  },
+  (table) => [
+    uniqueIndex('archive_related_unique').on(table.itemId, table.gameId),
+    index('archive_related_game').on(table.gameId),
+  ],
+);
+
+// Votes apply to a specific revision, so an edited date needs new checks.
+export const archiveVotes = sqliteTable(
+  'archive_votes',
+  {
+    id: text('id').primaryKey(),
+    itemId: text('item_id')
+      .notNull()
+      .references(() => archiveItems.id),
+    revision: integer('revision').notNull(),
+    userId: text('user_id').notNull(),
+    displayName: text('display_name').notNull(),
+    verdict: text('verdict').notNull(),
+    reason: text('reason').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [uniqueIndex('archive_vote_unique').on(table.itemId, table.revision, table.userId)],
+);
+
+// Public snapshots omit account IDs and keep past corrections readable.
+export const archiveRevisions = sqliteTable(
+  'archive_revisions',
+  {
+    id: text('id').primaryKey(),
+    itemId: text('item_id')
+      .notNull()
+      .references(() => archiveItems.id),
+    revision: integer('revision').notNull(),
+    snapshot: text('snapshot').notNull(),
+    reason: text('reason').notNull(),
+    displayName: text('display_name').notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+  (table) => [uniqueIndex('archive_revision_unique').on(table.itemId, table.revision)],
+);
+
+// Count every write, including repeated edits and vote changes.
+export const archiveActivity = sqliteTable(
+  'archive_activity',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+  (table) => [index('archive_activity_user_time').on(table.userId, table.createdAt)],
 );

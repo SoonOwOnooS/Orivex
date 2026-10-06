@@ -20,8 +20,7 @@ export function LanguageProvider({
   const [locale, updateLocale] = useState(initialLocale);
   useEffect(() => {
     document.documentElement.lang = locale === 'en' ? 'en' : 'zh-CN';
-    document.title =
-      locale === 'en' ? 'Orivex · Game Evidence Registry' : 'Orivex · 游戏创作证据库';
+    document.title = locale === 'en' ? 'Orivex · Game Creator Archives' : 'Orivex · 游戏创作档案';
   }, [locale]);
   const value = useMemo(
     () => ({

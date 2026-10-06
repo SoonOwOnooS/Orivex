@@ -4,19 +4,19 @@ This guide uses simple English. The main app files also have short English comme
 
 ## If you come from a game engine
 
-| Web concept | Similar idea in a game engine |
-| --- | --- |
-| React component | A reusable UI panel |
-| JSX | UI elements written inside a code file |
-| React state | Data that controls the current screen |
-| `setSomething(...)` | Change screen data and redraw the UI |
-| `useEffect(...)` | Run work when a screen opens or its inputs change |
-| `fetch(...)` | Send a request to a server |
-| API route | A server function that handles a request |
-| D1 | The shared database, hosted by Cloudflare |
-| Web Worker | A background task on the visitor's device |
-| TypeScript type | A description of the data a function expects |
-| Zod schema | A check of the actual input received at runtime |
+| Web concept         | Similar idea in a game engine                     |
+| ------------------- | ------------------------------------------------- |
+| React component     | A reusable UI panel                               |
+| JSX                 | UI elements written inside a code file            |
+| React state         | Data that controls the current screen             |
+| `setSomething(...)` | Change screen data and redraw the UI              |
+| `useEffect(...)`    | Run work when a screen opens or its inputs change |
+| `fetch(...)`        | Send a request to a server                        |
+| API route           | A server function that handles a request          |
+| D1                  | The shared database, hosted by Cloudflare         |
+| Web Worker          | A background task on the visitor's device         |
+| TypeScript type     | A description of the data a function expects      |
+| Zod schema          | A check of the actual input received at runtime   |
 
 A TypeScript type helps while writing code. It does not stop a user from sending bad data. The server uses Zod and other checks for that.
 
@@ -24,6 +24,7 @@ A TypeScript type helps while writing code. It does not stop a user from sending
 
 1. `app/page.tsx` reads the current login session.
 2. `app/workspace.tsx` shows the game list and main tabs.
+   `app/archive.tsx` shows one game’s stories, sources, fan works, and support links.
 3. `app/compare.tsx` compares descriptions and videos.
 4. `app/reviews.tsx` shows reports, reviews, and responses.
 5. `app/api/` handles shared data on the server.
@@ -32,28 +33,31 @@ The browser shows the interface. The server checks login and saves shared record
 
 ## File map
 
-| File | Main job |
-| --- | --- |
-| `app/layout.tsx` | Page title, language, and shared layout |
-| `app/globals.css` | Colors, spacing, dialogs, and mobile layout |
-| `app/workspace.tsx` | Game list, search, registration form, and tabs |
-| `app/compare.tsx` | Analysis controls, frame matching, and report publishing |
-| `app/reviews.tsx` | Review cards, votes, responses, and change history |
-| `lib/video.ts` | Local video decoding, frame sampling, file hashes, and vector comparison |
-| `public/ai-worker.js` | Model download and local model work |
-| `lib/report.ts` | Local and public report formats |
-| `lib/auth.ts` | GitHub login and site sessions |
-| `lib/server.ts` | Database access, login checks, input limits, and API errors |
-| `lib/client.ts` | Read API results and show useful errors |
-| `lib/messages.ts` | English translations for Chinese UI text |
-| `lib/i18n.tsx` | Language state and the language switch |
-| `lib/locale-server.ts` | Choose the language for server messages |
-| `lib/webmcp.ts` | Optional browser tools; they cannot publish records |
-| `db/schema.ts` | Table definitions and indexes |
-| `drizzle/` | Database migration files |
-| `wrangler.jsonc` | Cloudflare Worker name, bindings, and public settings |
-| `vite.config.ts` | Build setup |
-| `scripts/start-local.mjs` | Run a built Worker on the local computer |
+| File                       | Main job                                                                 |
+| -------------------------- | ------------------------------------------------------------------------ |
+| `app/layout.tsx`           | Page title, language, and shared layout                                  |
+| `app/globals.css`          | Colors, spacing, dialogs, and mobile layout                              |
+| `app/workspace.tsx`        | Game list, search, registration form, and tabs                           |
+| `app/archive.tsx`          | A shareable game archive and its record forms                            |
+| `app/api/archive/route.ts` | Read, add, correct, withdraw, and check archive records                  |
+| `lib/archive.ts`           | Record types, input checks, and shared labels                            |
+| `app/compare.tsx`          | Analysis controls, frame matching, and report publishing                 |
+| `app/reviews.tsx`          | Review cards, votes, responses, and change history                       |
+| `lib/video.ts`             | Local video decoding, frame sampling, file hashes, and vector comparison |
+| `public/ai-worker.js`      | Model download and local model work                                      |
+| `lib/report.ts`            | Local and public report formats                                          |
+| `lib/auth.ts`              | GitHub login and site sessions                                           |
+| `lib/server.ts`            | Database access, login checks, input limits, and API errors              |
+| `lib/client.ts`            | Read API results and show useful errors                                  |
+| `lib/messages.ts`          | English translations for Chinese UI text                                 |
+| `lib/i18n.tsx`             | Language state and the language switch                                   |
+| `lib/locale-server.ts`     | Choose the language for server messages                                  |
+| `lib/webmcp.ts`            | Optional browser tools; they cannot publish records                      |
+| `db/schema.ts`             | Table definitions and indexes                                            |
+| `drizzle/`                 | Database migration files                                                 |
+| `wrangler.jsonc`           | Cloudflare Worker name, bindings, and public settings                    |
+| `vite.config.ts`           | Build setup                                                              |
+| `scripts/start-local.mjs`  | Run a built Worker on the local computer                                 |
 
 ## Register a game
 
@@ -62,11 +66,31 @@ Registration form
   -> POST /api/games
   -> Check the site origin and login session
   -> Check fields, dates, duplicate records, and the account limit
-  -> Save the game in D1
+  -> Save the game and its first timeline sources in D1
   -> Refresh the game list
 ```
 
 `GET` reads records. `POST` submits data. SQL values are passed through `.bind(...)` instead of being added to the SQL string.
+
+## Game archives
+
+The URL `/?game=<game ID>` opens a public game archive. Anyone can read it. A signed-in member can add a story, a dated source, a fan work, or a support link.
+
+Each record has its original source link. Stories and fan works also name their creators. Adding a credit does not verify that someone is the creator.
+
+Fan works can link to several games. Games with the same series name share the fan section. Support links open external pages; Orivex does not handle payments.
+
+Source votes check whether a link supports a date. One account has one current opinion per record version. The submitter cannot check their own record. The earlier-source sort uses submitted source dates, which can still need checking.
+
+Only the original submitter can correct or withdraw their record. A correction creates a new version and keeps the old version and its votes. The new version starts with no votes. A withdrawn record is hidden from public browsing.
+
+The server checks the expected version again while writing. This prevents an old form from overwriting a newer correction.
+
+Each account can make up to 120 archive writes in the last 24 hours. This includes edits and votes. It is a per-account limit, not a total hosting cost limit.
+
+`0003_creator_archives.sql` creates the archive tables and copies old game registration sources into them. Apply this migration before deploying the archive code.
+
+Cloudflare dashboard login settings are kept during deployment with `keep_vars`. Local login settings belong in `.dev.vars`; see `.dev.vars.example`.
 
 ## Compare videos
 
