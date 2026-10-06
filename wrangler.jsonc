@@ -4,12 +4,14 @@
   "main": "./build/sites-worker.ts",
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"],
-  "d1_databases": [{
-    "binding": "DB",
-    "database_name": "orivex-db",
-    "database_id": "cb78c44c-81b1-4e24-99b7-233773939eb6",
-    "migrations_dir": "./drizzle"
-  }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "orivex-db",
+      "database_id": "cb78c44c-81b1-4e24-99b7-233773939eb6",
+      "migrations_dir": "./drizzle",
+    },
+  ],
   // Public runtime settings only. Never put AUTH_GITHUB_CLIENT_SECRET here.
-  "vars": { "AUTH_ORIGIN": "http://127.0.0.1:5173", "AUTH_GITHUB_CLIENT_ID": "" }
+  "vars": { "AUTH_ORIGIN": "http://127.0.0.1:5173", "AUTH_GITHUB_CLIENT_ID": "" },
 }

@@ -12,10 +12,15 @@ export default defineConfig(async () => {
   const { cloudflare } = await import('@cloudflare/vite-plugin');
   return {
     server: { host: '127.0.0.1', strictPort: true },
-    plugins: [vinext(), sites(), cloudflare({
-      configPath: './wrangler.jsonc',
-      viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
-      inspectorPort: false,
-    })],
+    // Build the React app, add hosting metadata, then build the Cloudflare Worker.
+    plugins: [
+      vinext(),
+      sites(),
+      cloudflare({
+        configPath: './wrangler.jsonc',
+        viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
+        inspectorPort: false,
+      }),
+    ],
   };
 });

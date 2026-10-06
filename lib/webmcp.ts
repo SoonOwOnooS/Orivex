@@ -1,3 +1,70 @@
-import {localize as t} from './messages';
-type Context={registerTool:(tool:{name:string;title:string;description:string;inputSchema:object;annotations:{readOnlyHint:boolean;untrustedContentHint:boolean};execute:(input:unknown)=>unknown},options:{signal:AbortSignal})=>unknown};
-export function registerTools(read:()=>unknown,start:()=>void){const context=(document as unknown as {modelContext?:Context}).modelContext;if(!context)return;const controller=new AbortController();for(const tool of [{name:'list_registered_games',title:t("读取已登记游戏"),description:t("读取当前游戏时间线中的游戏和公开日期，不修改数据。"),inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:true},execute:(input:unknown)=>{if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length)throw Error(t("参数必须为空对象"));return read();}},{name:'start_game_registration',title:t("打开游戏登记表"),description:t("打开当前用户的游戏登记表，仅开始填写，不会提交或创建记录。"),inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute:(input:unknown)=>{if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length)throw Error(t("参数必须为空对象"));start();return {opened:true,saved:false};}}]){try{void Promise.resolve(context.registerTool(tool,{signal:controller.signal})).catch(()=>{});}catch{}}return()=>controller.abort();}
+import { localize as t } from './messages';
+type Context = {
+  registerTool: (
+    tool: {
+      name: string;
+      title: string;
+      description: string;
+      inputSchema: object;
+      annotations: { readOnlyHint: boolean; untrustedContentHint: boolean };
+      execute: (input: unknown) => unknown;
+    },
+    options: { signal: AbortSignal },
+  ) => unknown;
+};
+// This browser feature is optional. Unsupported browsers simply skip it.
+export function registerTools(read: () => unknown, start: () => void) {
+  const context = (document as unknown as { modelContext?: Context }).modelContext;
+  if (!context) {
+    return;
+  }
+
+  // Aborting this signal removes the tools when the screen changes.
+  const controller = new AbortController();
+  for (const tool of [
+    {
+      name: 'list_registered_games',
+      title: t('读取已登记游戏'),
+      description: t('读取当前游戏时间线中的游戏和公开日期，不修改数据。'),
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+      annotations: { readOnlyHint: true, untrustedContentHint: true },
+      execute: (input: unknown) => {
+        if (
+          !input ||
+          typeof input !== 'object' ||
+          Array.isArray(input) ||
+          Object.keys(input).length
+        ) {
+          throw Error(t('参数必须为空对象'));
+        }
+        return read();
+      },
+    },
+    {
+      name: 'start_game_registration',
+      title: t('打开游戏登记表'),
+      description: t('打开当前用户的游戏登记表，仅开始填写，不会提交或创建记录。'),
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+      annotations: { readOnlyHint: false, untrustedContentHint: false },
+      execute: (input: unknown) => {
+        if (
+          !input ||
+          typeof input !== 'object' ||
+          Array.isArray(input) ||
+          Object.keys(input).length
+        ) {
+          throw Error(t('参数必须为空对象'));
+        }
+        start();
+        return { opened: true, saved: false };
+      },
+    },
+  ]) {
+    try {
+      void Promise.resolve(context.registerTool(tool, { signal: controller.signal })).catch(
+        () => {},
+      );
+    } catch {}
+  }
+  return () => controller.abort();
+}

@@ -2,6 +2,8 @@
 
 [English documentation](README.en.md)
 
+源码阅读入门：[Code guide (simple English)](CODE_GUIDE.md)。
+
 一个 MIT 开源的游戏创作证据库。任何人都可公开浏览，使用 GitHub 登录后可登记游戏、提交对照、独立审核和回应。
 
 ## 已实现

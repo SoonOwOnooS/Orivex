@@ -2,6 +2,8 @@
 
 [中文文档](README.md)
 
+New to web code? Start with the [code guide in simple English](CODE_GUIDE.md).
+
 An MIT-licensed game evidence registry. Anyone can browse publicly. Sign in with GitHub to register games, submit comparisons, review evidence, and respond.
 
 ## Features
