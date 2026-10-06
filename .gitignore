@@ -136,6 +136,7 @@ dist
 .pnp.*
 
 # Orivex runtime data and secrets
+.vs/
 .wrangler/
 .sites-runtime/
 .vinext/

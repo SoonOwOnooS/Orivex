@@ -11,9 +11,15 @@
 - 两段完整 MP4 / WebM 文件在浏览器内自动解码和均匀抽帧，每段 12 或 24 帧；每段上限 100 MB、10 分钟。单色画面排除。
 - 浏览器 Worker 运行 CLIP ViT-B32 视觉特征模型和多语言 MiniLM 文本特征模型；无需 API 密钥。首次需要联网下载模型，文件原文与视频不会传给模型服务。
 - 输出创意语义余弦相似度、视频抽样画面匹配相似度、6 组最高相似度画面对、时间点、采样数量、文件 SHA-256、分析版本和实际比较文本。
-- 发布后将报告存入共享 D1，用户授权公开的采样画面存入 R2。支持多人独立审核、禁止自审、每个账户每条对照一份意见、保留修订历史、回应与补充来源。
-- 服务端验证身份、同源提交、输入长度、日期、链接、图片格式和报告结构；提供每日提交额度。
+- 发布后仅将文字、分数、采样时间与文件指纹存入共享 D1。原视频和采样图片始终留在本机，导出到用户自己的报告仍可包含图片。支持多人独立审核、禁止自审、每个账户每条对照一份意见、保留修订历史、回应与补充来源。
+- 服务端验证身份、同源提交、输入长度、日期、链接和报告元数据；拒绝图片字段，限制发布请求最多 20,000 字节，并提供每日提交额度。
 - 不内置真实游戏的指控或编造评分；初始数据库为空。
+
+## 图片与费用范围
+
+当前版本不绑定 R2、不接收图片或视频上传。公开报告只包含文字和分析元数据，单次发布请求最多 20,000 字节；夹带图片字段会被拒绝。公开分数由用户设备生成，画面核查需要取得原视频。既有报告中的图片引用也不会通过列表接口公开。
+
+保持 Cloudflare Workers Free 套餐，不启用付费服务。D1 免费套餐达到每日读写额度会返回错误；达到存储额度会阻止新增数据。Workers 免费套餐达到每日请求额度也会拒绝请求。免费套餐可能因滥用而暂时不可用，不能保证网站永远可访问。项目源码无法替你锁定账号套餐；账号升级到付费后收费规则会改变。参见 [D1 官方价格](https://developers.cloudflare.com/d1/platform/pricing/)与 [Workers 官方限额](https://developers.cloudflare.com/workers/platform/limits/)。
 
 ## 方法与边界
 
@@ -29,7 +35,7 @@
 
 ## 运行
 
-项目使用 Vinext / React / TypeScript，运行于 Cloudflare Workers；共享持久化使用 D1 和 R2。Node >=22.13。
+项目使用 Vinext / React / TypeScript，运行于 Cloudflare Workers；共享持久化仅使用 D1，不使用 R2。Node >=22.13。
 
 ```sh
 npm ci
@@ -74,13 +80,12 @@ npm run dev
 
 ## 自部署
 
-`.orivex/hosting.json` 是本 fork 的配置，定义逻辑绑定 `DB` 和 `BUCKET`。目录已从 `.openai` 改为 `.orivex`，不直接兼容原 Sites 平台部署流程。根目录 `wrangler.jsonc` 提供 Cloudflare Workers 自部署配置；生产部署需绑定自己的 D1 数据库和 R2 存储桶，替换 D1 占位 UUID。源码不包含原站数据库、登录授权或托管项目身份。
+`.orivex/hosting.json` 是本 fork 的配置，仅定义逻辑绑定 `DB`。目录已从 `.openai` 改为 `.orivex`，不直接兼容原 Sites 平台部署流程。根目录 `wrangler.jsonc` 提供 Cloudflare Workers 自部署配置；生产部署仅需绑定自己的 D1 数据库；不要开通 R2。示例配置中的数据库 ID 必须与自己的 D1 数据库一致。源码不包含原站数据库、登录授权或托管项目身份。
 
-可创建默认配置名称对应的资源，再将 D1 创建命令返回的 `database_id` 填入 `wrangler.jsonc`：
+如尚未创建数据库，可创建 D1，再将返回的 `database_id` 填入 `wrangler.jsonc`；已有 `orivex-db` 时不要重复创建：
 
 ```sh
 npx wrangler d1 create orivex-db
-npx wrangler r2 bucket create orivex-evidence
 ```
 
 在 `wrangler.jsonc` 的运行时 `vars` 中将 `AUTH_ORIGIN` 设置为网站的 HTTPS origin，将 `AUTH_GITHUB_CLIENT_ID` 设置为生产 OAuth App 的 Client ID；更新 GitHub 回调地址。然后应用生产迁移、重新构建并部署生成的 Worker 配置：

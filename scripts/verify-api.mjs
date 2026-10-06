@@ -16,7 +16,7 @@ const migrationNames = (await readdir(migrationsRoot))
 const origin = 'http://127.0.0.1:8787';
 const workers = [];
 
-// Each worker owns an ephemeral database and bucket. No real login, network,
+// Each worker owns an ephemeral database. No real login, network,
 // persisted Wrangler state, or application-only authentication bypass is used.
 async function createWorker(bindings = {
   AUTH_ORIGIN: origin,
@@ -33,7 +33,6 @@ async function createWorker(bindings = {
     bindings,
     fetchMock,
     d1Databases: {DB: 'local-api-test'},
-    r2Buckets: {BUCKET: 'local-evidence-test'},
   });
   workers.push({mf, fetchMock});
   const db = await mf.getD1Database('DB');

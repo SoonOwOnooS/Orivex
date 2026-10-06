@@ -11,9 +11,15 @@ An MIT-licensed game evidence registry. Anyone can browse publicly. Sign in with
 - Two complete MP4 / WebM videos decoded locally in the browser, with 12 or 24 evenly spaced frame samples per video. Each file may be up to 100 MB and 10 minutes. Flat-color frames are excluded.
 - CLIP ViT-B32 visual embeddings and multilingual MiniLM text embeddings run in a browser Worker. No API key is required. The first run downloads models. Input text and original videos are not sent to a model service.
 - Cosine similarity, six closest frame pairs, timestamps, SHA-256 fingerprints, actual compared text, coverage, and limitations. Only the first 800 characters of each description are used; model tokenization may truncate them further.
-- Published reports persist in shared D1 storage. Authorized sampled frames persist in R2. Original videos remain local.
+- Published text, scores, sample times, and file fingerprints persist in D1. Videos and sampled images stay on the user’s device; local report exports can still include images.
 - Independent account reviews, no self-review, one current opinion per account per comparison, revision history, responses, and additional sources.
-- Server-side identity, origin, length, calendar date, URL, JPEG, and report validation. Rolling 24-hour submission limits.
+- Server-side identity, origin, length, calendar date, URL, and metadata validation. Image payloads are rejected. Rolling 24-hour submission limits.
+
+## Images and billing scope
+
+This version has no R2 binding or image/video upload endpoint. Published reports contain only text and analysis metadata. Publishing requests are capped at 20,000 bytes and reject image fields. Scores are generated on the user’s device; reviewers need the original videos to check visuals. Historical image references are also omitted from public listings.
+
+Keep the Cloudflare Workers Free plan and do not enable paid services. D1 Free rejects queries when daily read/write limits are reached and blocks new data at the storage limit. Workers Free rejects requests above its daily request limit. Abuse may make the site unavailable temporarily. Source configuration cannot lock your account’s billing plan; upgrading to Paid changes billing behavior. See [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/) and [Workers limits](https://developers.cloudflare.com/workers/platform/limits/).
 
 ## Understanding the results
 
@@ -27,7 +33,7 @@ The registry displays the latest 200 games and the review list the latest 100 co
 
 ## Run locally
 
-Vinext, React, and TypeScript on Cloudflare Workers, with D1 and R2. Requires Node 22.13 or later.
+Vinext, React, and TypeScript on Cloudflare Workers, with D1 only; R2 is not used. Requires Node 22.13 or later.
 
 ```sh
 npm ci
@@ -72,13 +78,12 @@ The app uses only GitHub's public numeric ID and login name. It requests no emai
 
 ## Self-hosting
 
-`.orivex/hosting.json` is this fork's configuration and declares logical `DB` and `BUCKET` bindings. The directory was renamed from `.openai` to `.orivex`; it is not directly compatible with the original Sites deployment flow. The root `wrangler.jsonc` provides a Cloudflare Workers self-hosting configuration. Bind your own D1 database and R2 bucket for production and replace the placeholder D1 UUID. The source does not inherit the original site's database, sign-in authorization, or hosted project identity.
+`.orivex/hosting.json` is this fork's configuration and declares only the logical `DB` binding. The directory was renamed from `.openai` to `.orivex`; it is not directly compatible with the original Sites deployment flow. The root `wrangler.jsonc` provides a Cloudflare Workers self-hosting configuration. Bind your own D1 database for production and verify its UUID. Do not subscribe to R2 for this version. The source does not inherit the original site's database, sign-in authorization, or hosted project identity.
 
-Create resources using the default configuration names, then put the `database_id` returned by the D1 creation command in `wrangler.jsonc`:
+If you have not created a database yet, create D1 and set its returned `database_id` in `wrangler.jsonc`. Do not create another database if `orivex-db` already exists:
 
 ```sh
 npx wrangler d1 create orivex-db
-npx wrangler r2 bucket create orivex-evidence
 ```
 
 In the runtime `vars` of `wrangler.jsonc`, set `AUTH_ORIGIN` to the site's HTTPS origin and `AUTH_GITHUB_CLIENT_ID` to your production OAuth App's Client ID, and update the GitHub callback URL. Apply production migrations, rebuild, and deploy the generated Worker configuration:
@@ -92,7 +97,7 @@ npx wrangler secret put AUTH_GITHUB_CLIENT_SECRET --config wrangler.jsonc
 
 Enter `AUTH_GITHUB_CLIENT_SECRET` interactively with the final command; never put it in version control or browser code. The migration command applies every pending migration, including `0002`. Local `.dev.vars` values do not automatically become production secrets. See Cloudflare's [environment variable](https://developers.cloudflare.com/workers/configuration/environment-variables/) and [secret](https://developers.cloudflare.com/workers/configuration/secrets/) documentation.
 
-After building, `npm run verify:api` tests the compiled Worker with an isolated temporary Miniflare database and test data. It verifies access controls, input validation, persistence, evidence serving, self-review rejection, review uniqueness, revision history, responses, and localized API errors. Normal development and production use GitHub OAuth. Tests never connect to or change production data.
+After building, `npm run verify:api` tests the compiled Worker with an isolated temporary Miniflare database and test data. It verifies access controls, input validation, persistence, image-upload rejection, metadata-only publishing, self-review rejection, review uniqueness, revision history, responses, and localized API errors. Normal development and production use GitHub OAuth. Tests never connect to or change production data.
 
 ## Dependencies and models
 

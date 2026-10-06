@@ -1,8 +1,4 @@
 import assert from 'node:assert/strict';
-import {createRequire} from 'node:module';
-
-const require = createRequire(import.meta.url);
-const jpeg = require('jpeg-js');
 
 export async function runApiScenarios({fetch, db, origin, mintSession}) {
   const alice = 'test-member-alice', bob = 'test-member-bob', carol = 'test-member-carol';
@@ -72,9 +68,7 @@ export async function runApiScenarios({fetch, db, origin, mintSession}) {
   assert.equal(record.created_by, bob);
   await post('/api/games', game, alice, 409);
 
-  const pixels = new Uint8Array(16 * 16 * 4);
-  for (let i = 0; i < pixels.length; i++) pixels[i] = i % 255;
-  const image = 'data:image/jpeg;base64,' + jpeg.encode({data: pixels, width: 16, height: 16}, 75).data.toString('base64');
+  const image = 'data:image/jpeg;base64,/9j/';
   const report = {
     version: '1.0',
     model: 'transformers.js 3.8.1 / CLIP ViT-B32 / multilingual MiniLM-L12',
@@ -86,7 +80,7 @@ export async function runApiScenarios({fetch, db, origin, mintSession}) {
       samples: 12, a_duration: 2, b_duration: 2, a_hash: 'a'.repeat(64), b_hash: 'b'.repeat(64),
       a_frame_count: 12, b_frame_count: 12, audio_processed: false,
     },
-    matches: [{similarity: 1, a: {time: .2, image}, b: {time: .2, image}}],
+    matches: [{similarity: 1, a: {time: .2}, b: {time: .2}}],
     limitations: ['本地测试，不代表真实游戏。'],
   };
   const payload = {
@@ -108,6 +102,13 @@ export async function runApiScenarios({fetch, db, origin, mintSession}) {
     ...payload,
     analysis: {...report, matches: [{similarity: 1, a: {time: .2, image: 'data:image/jpeg;base64,/9j/'}, b: {time: .2, image}}]},
   }, alice, 400);
+  const beforeRejected = (await db.prepare('SELECT COUNT(*) AS n FROM comparisons').first()).n;
+  await post('/api/comparisons', {...payload, analysis: {...report, coverage: {...report.coverage, image}}}, alice, 400);
+  await post('/api/comparisons', {...payload, analysis: {...report, matches: [{similarity: 1, a: {time: .2, image}, b: {time: .2, image}}]}}, alice, 400);
+  await post('/api/comparisons', {...payload, analysis: {...report, matches: [{similarity: 1, a: {time: .2, image: 'data:image/jpeg;base64,' + 'A'.repeat(25000)}, b: {time: .2}}]}}, alice, 413);
+  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM comparisons').first()).n, beforeRejected);
+  const textOnly = await post('/api/comparisons', {...payload, analysis: {...report, video_similarity: null, matches: [], coverage: {...report.coverage, samples: 0, a_frame_count: 0, b_frame_count: 0, a_duration: 0, b_duration: 0, a_hash: null, b_hash: null}}}, alice);
+  assert(textOnly.id);
   const comparison = await post('/api/comparisons', payload, alice);
   const review = {
     kind: 'review', comparison_id: comparison.id, verdict: 'similar',
@@ -134,15 +135,23 @@ export async function runApiScenarios({fetch, db, origin, mintSession}) {
   assert(shared);
   assert(!JSON.stringify(shared).includes('author_id'));
   assert(!JSON.stringify(shared).includes('PRIVATE FULL NAME'));
-  const evidence = await fetch(origin + shared.analysis.matches[0].a.image, {headers: {Connection: 'close'}});
-  assert.equal(evidence.status, 200);
-  assert.equal(evidence.headers.get('content-type'), 'image/jpeg');
+  assert(!JSON.stringify(shared.analysis).includes('image'));
+  const stored = await db.prepare('SELECT analysis FROM comparisons WHERE id=?').bind(comparison.id).first();
+  assert(!stored.analysis.includes('image'));
+  assert(!stored.analysis.includes('data:'));
+  assert(stored.analysis.length < 20000);
+  // Historical image references must not become an upload or image-serving path.
+  await db.prepare('UPDATE comparisons SET analysis=? WHERE id=?').bind(JSON.stringify({...report, matches: [{similarity: 1, a: {time: .2, image: '/api/evidence/old/0-a'}, b: {time: .2, image}}]}), comparison.id).run();
+  const legacy = await (await fetch(origin + '/api/comparisons')).json();
+  assert(!JSON.stringify(legacy).includes('image'));
+  const evidence = await fetch(origin + '/api/evidence/' + comparison.id + '/0-a');
+  assert.equal(evidence.status, 404);
   return {
     authentication: true, forgedIdentityHeadersRejected: true, sessionIdentityAuthoritative: true,
     expiredSessionRejected: true, revokedSessionRejected: true, tamperedSessionRejected: true,
     crossOriginRejected: true, missingOriginRejected: true, invalidDateRejected: true,
-    duplicateRejected: true, emptyReportRejected: true, fakeJpegRejected: true,
+    duplicateRejected: true, emptyReportRejected: true, imagePayloadRejected: true, oversizedPayloadRejected: true, textOnlyPublishing: true,
     sharedPersistence: true, selfReviewRejected: true, uniqueReviews: true,
-    revisionHistory: true, authorResponse: true, publicPseudonyms: true, evidenceServing: true,
+    revisionHistory: true, authorResponse: true, publicPseudonyms: true, noR2Required: true, noStoredImages: true, legacyImagesHidden: true, evidenceEndpointRemoved: true,
   };
 }
