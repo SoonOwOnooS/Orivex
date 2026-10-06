@@ -7,8 +7,7 @@
   "d1_databases": [{
     "binding": "DB",
     "database_name": "orivex-db",
-    // Replace with your own Cloudflare D1 id before deploying.
-    "database_id": "00000000-0000-4000-8000-000000000000",
+    "database_id": "cb78c44c-81b1-4e24-99b7-233773939eb6",
     "migrations_dir": "./drizzle"
   }],
   "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "orivex-evidence" }],
